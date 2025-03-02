@@ -1,12 +1,5 @@
 "use client";
-import {
-	Control,
-	FieldPath,
-	FieldValues,
-	Path,
-	useFieldArray,
-	useForm,
-} from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { Lens, useLens } from "@hookform/lenses";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -56,10 +49,9 @@ function FormComponent() {
 		);
 	}
 
-	const { fields: childrenFields } = useFieldArray({
-		control: form.control,
-		name: "children",
-	});
+	const lens = useLens({ control: form.control });
+	const children = lens.focus("children");
+	const { fields: childrenFields } = useFieldArray(children.interop());
 
 	return (
 		<Form {...form}>
@@ -67,24 +59,17 @@ function FormComponent() {
 				<div>
 					<TypographyH3>Person</TypographyH3>
 					<PersonForm
-						control={form.control}
-						names={{
-							name: "firstName",
-							surname: "lastName",
-						}}
+						lens={lens.reflect((l) => ({
+							name: l.focus("firstName"),
+							surname: l.focus("lastName"),
+						}))}
 					/>
 				</div>
 
-				{childrenFields.map((field, index) => (
-					<div key={field.id}>
+				{children.map(childrenFields, (l, key, index) => (
+					<div key={key}>
 						<TypographyH3>Child {index + 1}</TypographyH3>
-						<PersonForm
-							control={form.control}
-							names={{
-								name: `children.${index}.name`,
-								surname: `children.${index}.surname`,
-							}}
-						/>
+						<PersonForm lens={l} />
 					</div>
 				))}
 
@@ -94,37 +79,29 @@ function FormComponent() {
 	);
 }
 
-function PersonForm<FormSchema extends FieldValues>({
-	control,
-	names,
+function PersonForm({
+	lens,
 }: {
-	control: Control<FormSchema>;
-	names: {
-		name: FieldPath<FormSchema>;
-		surname: FieldPath<FormSchema>;
-	};
+	lens: Lens<{ name: string; surname: string }>;
 }) {
 	return (
 		<>
-			<StringInput control={control} name={names.name} label="Name" />
-			<StringInput control={control} name={names.surname} label="SurName" />
+			<StringInput lens={lens.focus("name")} label="Name" />
+			<StringInput lens={lens.focus("surname")} label="SurName" />
 		</>
 	);
 }
 
-function StringInput<FormSchema extends FieldValues>({
-	control,
-	name,
+function StringInput({
+	lens,
 	label,
 }: {
-	control: Control<FormSchema>;
-	name: FieldPath<FormSchema>;
+	lens: Lens<string>;
 	label?: ReactNode;
 }) {
 	return (
 		<FormField
-			control={control}
-			name={name}
+			{...lens.interop()}
 			render={({ field }) => (
 				<FormItem>
 					{label && <FormLabel>{label}</FormLabel>}
